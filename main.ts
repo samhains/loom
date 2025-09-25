@@ -13,6 +13,7 @@ import {
   Node,
   NoteState,
   getPreset,
+  isOpenRouterPreset,
 } from "./common";
 import {
   App,
@@ -1589,19 +1590,23 @@ export default class LoomPlugin extends Plugin {
   async completeOpenRouter(prompt: string) {
     prompt = this.trimOpenAIPrompt(prompt);
 
+    const preset = getPreset(this.settings);
+
     let body: any = {
       prompt,
-      model: getPreset(this.settings).model,
+      model: preset.model,
       max_tokens: this.settings.maxTokens,
       n: this.settings.n,
       temperature: this.settings.temperature,
       top_p: this.settings.topP,
       best_of: this.settings.bestOf,
-      provider: {
-        // @ts-expect-error
-        quantizations: [getPreset(this.settings).quantization]
-      }
     };
+
+    if (isOpenRouterPreset(preset) && preset.quantization) {
+      body.provider = {
+        quantizations: [preset.quantization],
+      };
+    }
     if (this.settings.frequencyPenalty !== 0)
       body.frequency_penalty = this.settings.frequencyPenalty;
     if (this.settings.presencePenalty !== 0)
@@ -2388,6 +2393,7 @@ class LoomSettingTab extends PluginSettingTab {
       if (this.plugin.settings.modelPresets[this.plugin.settings.modelPreset].provider === "openrouter") {
         new Setting(presetFields).setName("Quantization").addDropdown((dropdown) =>
           dropdown
+            .addOption("", "Provider default")
             .addOptions({
               bf16: "bf16",
               fp16: "fp16",
@@ -2399,13 +2405,17 @@ class LoomSettingTab extends PluginSettingTab {
               this.plugin.settings.modelPresets[
                 this.plugin.settings.modelPreset
               // @ts-expect-error TODO
-              ].quantization
+              ].quantization ?? ""
             )
             .onChange(async (value) => {
-              this.plugin.settings.modelPresets[
+              const preset = this.plugin.settings.modelPresets[
                 this.plugin.settings.modelPreset
-              // @ts-expect-error TODO
-              ].quantization = value;
+              ];
+
+              if (!isOpenRouterPreset(preset)) return;
+
+              if (value === "") delete preset.quantization;
+              else preset.quantization = value;
               await this.plugin.save();
             })
         );

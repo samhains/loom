@@ -18,7 +18,7 @@ type ProviderProps = {
   azure: { url: string };
   "azure-chat": { url: string };
   anthropic: { url: string };
-  openrouter: { quantization: string };
+  openrouter: { quantization?: string };
 };
 
 type SharedPresetSettings = {
@@ -62,6 +62,10 @@ export interface LoomSettings {
 
 export const getPreset = (settings: LoomSettings) =>
   settings.modelPresets[settings.modelPreset];
+
+export const isOpenRouterPreset = (
+  preset: ModelPreset<Provider>
+): preset is ModelPreset<"openrouter"> => preset.provider === "openrouter";
 
 export type SearchResultState = "result" | "ancestor" | "none" | null;
 
